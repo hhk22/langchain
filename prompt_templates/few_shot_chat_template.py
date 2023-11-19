@@ -6,6 +6,7 @@ load_dotenv()
 from langchain.prompts import ChatPromptTemplate
 from langchain.prompts.few_shot import FewShotChatMessagePromptTemplate
 from langchain.schema import BaseOutputParser
+from langchain.prompts.example_selector import LengthBasedExampleSelector
 
 chat = ChatOpenAI(
     streaming=True,
