@@ -1,5 +1,6 @@
 from langchain.memory import ConversationSummaryBufferMemory
 from langchain.chat_models import ChatOpenAI
+# from langchain.chains import LLMChain
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 
@@ -24,12 +25,23 @@ prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-def load_memory():
+# chain = LLMChain(
+#     llm=llm,
+#     memory=memory,
+#     prompt=prompt,
+#     verbose=True
+# )
+
+def load_memory(_):
     return memory.load_memory_variables({})["chat_history"]
 
+def invoke_chain(question):
+    rst = chain.invoke({"question": question})
+    memory.save_context({"input": question}, {"output": rst.content})
+    print(rst)
+
+
 chain = RunnablePassthrough.assign(chat_history=load_memory) | prompt | llm
-rst = chain.invoke({
-    "chat_history": memory.load_memory_variables({})["chat_history"],
-    "question": "My name is Nico"
-})
-print(rst)
+invoke_chain("My name is Nico!")
+invoke_chain("What is my name?")
+
