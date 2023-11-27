@@ -1,9 +1,10 @@
 from langchain.chat_models import ChatOpenAI
-from langchain.chains import RetrievalQA
 from langchain.embeddings import OpenAIEmbeddings, CacheBackedEmbeddings
 from langchain.vectorstores.chroma import Chroma
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.storage import LocalFileStore
+from langchain.prompts import ChatPromptTemplate
+from langchain.schema.runnable import RunnablePassthrough
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -26,12 +27,19 @@ cached_embeddings = CacheBackedEmbeddings.from_bytes_store(
 
 vectorstore = Chroma.from_documents(docs, cached_embeddings)
 
-chain = RetrievalQA.from_chain_type(
-    llm=llm,
-    chain_type="stuff",
-    retriever=vectorstore.as_retriever()
-)
+retriever = vectorstore.as_retriever()
+print(retriever)
 
-rst = chain.run("Where does hyeonghwa live?")
+prompt = ChatPromptTemplate.from_messages([
+        (
+            "system",
+            "You are a helpful assistant. Answer questions using only the following context. If you don't know the answer just say you don't know, don't make it up:\n\n{context}",
+        ),
+        ("human", "{question}"),
+    ])
+
+chain = {"context": retriever, "question": RunnablePassthrough()} | prompt | llm
+rst = chain.invoke("Describe Hyeonghwan")
 print(rst)
+
 
