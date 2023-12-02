@@ -3,7 +3,7 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.callbacks import StreamingStdOutCallbackHandler
-from langchain.document_loaders import UnstructuredFileLoader
+from langchain.document_loaders import UnstructuredFileLoader, TextLoader
 from langchain.retrievers import WikipediaRetriever
 from langchain.schema import BaseOutputParser
 from dotenv import load_dotenv
@@ -211,12 +211,27 @@ def split_file(file):
         chunk_size=600,
         chunk_overlap=100,
     )
-    loader = UnstructuredFileLoader(file_path)
-    docs = loader.load_and_split(text_splitter=splitter)
-    return docs
+    
+    state_of_the_union = None
+    with open(file_path) as f:
+        state_of_the_union = f.read()
+    texts = state_of_the_union.split("\n\n")
+    return splitter.create_documents(texts)
 
+
+@st.cache_data(show_spinner="Making Quiz...")
+def run_quiz_chain(_docs, topic):
+    chain = {"context": question_chain} | formatting_chain | OutputJsonParser
+    return chain.invoke(_docs)
+
+
+@st.cache_data(show_spinner="Searching Wikipedia...")
+def search_wikipedia(term):
+    retriever = WikipediaRetriever(top_k_results=5)
+    return retriever.get_relevant_documents(term)
 
 docs = None
+topic = None
 with st.sidebar:
     choice = st.selectbox(
         "Choose what you want to use.",
@@ -235,10 +250,9 @@ with st.sidebar:
             st.write(docs)
     else:
         topic = st.text_input("Search Wikipedia...")
-        # if topic:
-        #     retriever = WikipediaRetriever(top_k_results=5)
-        #     with st.status("Searching Wikipedia..."):
-        #         docs = retriever.get_relevant_documents(topic)
+        if topic:
+            docs = search_wikipedia(topic)
+            st.write(docs)
 
 if not docs:
     st.markdown(
@@ -247,9 +261,19 @@ if not docs:
         """
     )
 else:
-    start = st.button("Generating Quiz")
-    print(1231231)
-    if start:
-        chain = {"context": question_chain} | formatting_chain | OutputJsonParser
-        response = chain.invoke(docs)
-        st.write(response)
+    response = run_quiz_chain(docs, topic if topic else file.name)
+    with st.form("question_form"):
+        for question in response["questions"]:
+            st.write(question["question"])
+            value = st.radio(
+                "Select an option.",
+                [answer["answer"] for answer in question["answers"]],
+                index=None,
+            )
+
+            if {"answer": value, "correct": True} in question["answers"]:
+                st.success("Correct!")
+            elif value is not None:
+                st.error("Wrong!")
+        
+        button = st.form_submit_button()
