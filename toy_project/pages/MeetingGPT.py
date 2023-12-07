@@ -86,7 +86,7 @@ with st.sidebar:
         "video",
         type=["mp4", "avi", "mkv", "mov"],
     )
-    
+
 if video:
     with st.status("Loading Video...") as status:
         video_content = video.read()
@@ -94,17 +94,17 @@ if video:
         transcript_path = video_path.replace("mp4", "txt")
         with open(video_path, "wb") as f:
             f.write(video_content)
-    
+
         status.update(label="Extracting Video...")
         extract_audio_from_video(video_path)
-    
+
         status.update(label="Cutting Audio segments...")
         cut_audio_in_chunks(video_path.replace("mp4", "mp3"), 10, "./.cache/chunks")
 
         status.update(label="Transcribing AUdio...")
         transcribe_chunks("./.cache/chunks", transcript_path)
-        
-    
+
+
     transcript_tab, summary_tab, qa_tab = st.tabs(
         [
             "Transcript",
@@ -116,7 +116,7 @@ if video:
     with transcript_tab:
         with open(transcript_path, "r") as file:
             st.write(file.read())
-    
+
     with summary_tab:
         start = st.button("Generate Summary")
         if start:
@@ -170,7 +170,7 @@ if video:
         docs = retriever.invoke("do they talk about marcus aurelius?")
         st.write(docs)
 
-                
+
 
 
 
